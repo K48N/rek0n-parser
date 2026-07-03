@@ -1,0 +1,34 @@
+[package]
+name = "rek0n-parser"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+authors = ["kon"]
+description = "Tree-sitter structural chunking for rek0n RAG ingestion"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/K48N/rek0n-parser"
+homepage = "https://github.com/K48N/rek0n-parser"
+keywords = ["tree-sitter", "parser", "rag", "ast", "code-chunking"]
+categories = ["parsing", "text-processing"]
+exclude = ["/target"]
+
+[lib]
+name = "rek0n_parser"
+path = "src/lib.rs"
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[dependencies]
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dev-dependencies]
+serde_json = "1.0"
