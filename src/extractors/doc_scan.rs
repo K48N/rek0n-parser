@@ -30,7 +30,8 @@ pub(super) fn scan_doc_comments(source: &str) -> Vec<ByteRange> {
         if bytes[index] == b'/' && index + 1 < bytes.len() {
             match bytes[index + 1] {
                 b'/' => {
-                    let is_doc = index + 2 < bytes.len() && bytes[index + 2] == b'/';
+                    let is_doc = index + 2 < bytes.len()
+                        && (bytes[index + 2] == b'/' || bytes[index + 2] == b'!');
                     let start = index;
                     index += 2;
                     while index < bytes.len() && bytes[index] != b'\n' {
@@ -272,6 +273,14 @@ mod tests {
         assert_eq!(ranges.len(), 2);
         assert_eq!(&source[ranges[0].start..ranges[0].end], "/// one");
         assert_eq!(&source[ranges[1].start..ranges[1].end], "/// two");
+    }
+
+    #[test]
+    fn records_inner_line_doc_comments() {
+        let source = "//! crate docs\nfn main() {}\n";
+        let ranges = scan_doc_comments(source);
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(&source[ranges[0].start..ranges[0].end], "//! crate docs");
     }
 
     #[test]

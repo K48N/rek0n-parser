@@ -1,35 +1,11 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
-pub enum ChunkKind {
-    Function,
-    Struct,
-    Enum,
-    Impl,
-    Trait,
-    Mod,
-    Const,
-    Static,
-    TypeAlias,
-    Macro,
-    Unknown,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SemanticChunk {
-    pub kind: ChunkKind,
-    pub name: Option<String>,
-    pub text: String,
-    pub start_line: usize,
-    pub end_line: usize,
-    pub has_error: bool,
-}
+pub use rek0n_chunk::{ChunkKind, ParsedChunk as SemanticChunk};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum ParserError {
+    #[error("invalid parse options: {0}")]
+    InvalidOptions(String),
+
     #[error("unsupported language: {0}")]
     UnsupportedLanguage(String),
 
@@ -44,6 +20,12 @@ pub enum ParserError {
 
     #[error("parse was cancelled")]
     ParseCancelled,
+
+    #[error("source is {len} bytes, exceeding limit of {max}")]
+    SourceTooLarge { len: usize, max: usize },
+
+    #[error("extracted {count} chunks, exceeding limit of {max}")]
+    TooManyChunks { count: usize, max: usize },
 
     #[error("invalid utf-8 in source slice")]
     InvalidUtf8(#[from] std::str::Utf8Error),

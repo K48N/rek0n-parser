@@ -16,7 +16,7 @@ fn parse_timed_out_returns_parse_timed_out() {
         "rust",
         ParseOptions {
             timeout: Duration::from_micros(1),
-            cancellation: None,
+            ..Default::default()
         },
     )
     .expect_err("parse with a 1 µs timeout should fail");
@@ -33,6 +33,7 @@ fn cancelled_parse_returns_parse_cancelled() {
         ParseOptions {
             timeout: Duration::from_secs(5),
             cancellation: Some(&flag),
+            ..Default::default()
         },
     )
     .expect_err("pre-cancelled parse should fail");
@@ -46,4 +47,26 @@ fn default_parse_options_use_five_second_timeout() {
         ParseOptions::default().timeout,
         rek0n_parser::DEFAULT_PARSE_TIMEOUT
     );
+}
+
+#[test]
+fn rejects_zero_max_source_bytes() {
+    let err = ParseOptions {
+        max_source_bytes: 0,
+        ..Default::default()
+    }
+    .validate()
+    .expect_err("zero max source");
+    assert!(matches!(err, ParserError::InvalidOptions(_)));
+}
+
+#[test]
+fn rejects_zero_max_chunks() {
+    let err = ParseOptions {
+        max_chunks: 0,
+        ..Default::default()
+    }
+    .validate()
+    .expect_err("zero max chunks");
+    assert!(matches!(err, ParserError::InvalidOptions(_)));
 }

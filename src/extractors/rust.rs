@@ -19,6 +19,9 @@ const RUST_QUERY: &str = r#"
     (static_item) @static
     (type_item) @type_alias
     (macro_definition) @macro
+    (use_declaration) @use
+    (union_item) @union
+    (extern_crate_declaration) @extern_crate
   ]
 )
 "#;
@@ -33,7 +36,7 @@ pub fn extract_rust_chunks(
     parser
         .set_language(language)
         .map_err(|err| ParserError::LanguageSetup(err.to_string()))?;
-    configure_parser(&mut parser, options);
+    configure_parser(&mut parser, options)?;
 
     if is_parse_cancelled(options) {
         return Err(ParserError::ParseCancelled);
@@ -68,12 +71,15 @@ pub fn extract_rust_chunks(
                 Some(name) => chunk_kind_from_capture(name),
                 None => ChunkKind::Unknown,
             };
+            if kind == ChunkKind::Mod && node.child_by_field_name("body").is_some() {
+                continue;
+            }
             let name = extract_name(node, source_bytes);
             let has_error = node.has_error();
             let (start_byte, end_byte) = chunk_byte_range(node, source_code, &doc_comments);
             let text = source_code[start_byte..end_byte].to_string();
             let start_line = byte_offset_to_line(&line_starts, start_byte);
-            let end_line = node.end_position().row + 1;
+            let end_line = byte_offset_to_line(&line_starts, end_byte.saturating_sub(1));
 
             chunks.push(SemanticChunk {
                 kind,
@@ -89,13 +95,17 @@ pub fn extract_rust_chunks(
     Ok(chunks)
 }
 
-fn configure_parser(parser: &mut Parser, options: ParseOptions<'_>) {
-    parser.set_timeout_micros(options.timeout.as_micros() as u64);
+fn configure_parser(parser: &mut Parser, options: ParseOptions<'_>) -> Result<(), ParserError> {
+    let micros = u64::try_from(options.timeout.as_micros()).map_err(|_| {
+        ParserError::LanguageSetup("parse timeout exceeds representable range".into())
+    })?;
+    parser.set_timeout_micros(micros);
     if let Some(flag) = options.cancellation {
         unsafe {
             parser.set_cancellation_flag(Some(flag));
         }
     }
+    Ok(())
 }
 
 fn is_parse_cancelled(options: ParseOptions<'_>) -> bool {
@@ -154,6 +164,9 @@ fn chunk_kind_from_capture(capture_name: &str) -> ChunkKind {
         "static" => ChunkKind::Static,
         "type_alias" => ChunkKind::TypeAlias,
         "macro" => ChunkKind::Macro,
+        "use" => ChunkKind::Use,
+        "union" => ChunkKind::Union,
+        "extern_crate" => ChunkKind::ExternCrate,
         _ => ChunkKind::Unknown,
     }
 }
@@ -198,7 +211,7 @@ fn chunk_byte_range(node: Node, source: &str, doc_comments: &[ByteRange]) -> (us
 
     let mut sibling = node.prev_sibling();
     while let Some(sib) = sibling {
-        if sib.kind() == "attribute_item" {
+        if matches!(sib.kind(), "attribute_item" | "inner_attribute_item") {
             start = sib.start_byte();
             sibling = sib.prev_sibling();
         } else {
@@ -321,13 +334,77 @@ mod inner {
 "#;
 
         let chunks = parse(source).expect("parse should succeed");
-        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].kind, ChunkKind::Struct);
+        assert_eq!(chunks[0].name.as_deref(), Some("InnerWidget"));
+        assert_eq!(chunks[1].kind, ChunkKind::Function);
+        assert_eq!(chunks[1].name.as_deref(), Some("inner_fn"));
+        assert!(chunks.iter().all(|chunk| chunk.kind != ChunkKind::Mod));
+    }
+
+    #[test]
+    fn inner_line_doc_comments_are_included() {
+        let source = r#"//! Module docs.
+fn main() {}
+"#;
+        let chunks = parse(source).expect("parse should succeed");
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks[0].text.contains("//! Module docs."));
+    }
+
+    #[test]
+    fn flags_chunks_with_internal_parse_errors() {
+        let source = r#"
+fn broken() {
+    let x = ;
+}
+
+fn healthy() -> i32 {
+    42
+}
+"#;
+        let chunks = parse(source).expect("parse should succeed");
+        assert_eq!(chunks.len(), 2);
+
+        let broken = &chunks[0];
+        assert_eq!(broken.kind, ChunkKind::Function);
+        assert_eq!(broken.name.as_deref(), Some("broken"));
+        assert!(broken.has_error);
+
+        let healthy = &chunks[1];
+        assert_eq!(healthy.name.as_deref(), Some("healthy"));
+        assert!(!healthy.has_error);
+    }
+
+    #[test]
+    fn file_mod_declaration_is_extracted() {
+        let source = "mod child;\n";
+        let chunks = parse(source).expect("parse should succeed");
+        assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].kind, ChunkKind::Mod);
-        assert_eq!(chunks[0].name.as_deref(), Some("inner"));
-        assert_eq!(chunks[1].kind, ChunkKind::Struct);
-        assert_eq!(chunks[1].name.as_deref(), Some("InnerWidget"));
-        assert_eq!(chunks[2].kind, ChunkKind::Function);
-        assert_eq!(chunks[2].name.as_deref(), Some("inner_fn"));
+        assert_eq!(chunks[0].name.as_deref(), Some("child"));
+    }
+
+    #[test]
+    fn extracts_use_union_and_extern_crate() {
+        let source = r#"
+use std::collections::HashMap;
+
+union Payload {
+    int: i32,
+    float: f32,
+}
+
+extern crate serde;
+"#;
+
+        let chunks = parse(source).expect("parse should succeed");
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[0].kind, ChunkKind::Use);
+        assert_eq!(chunks[1].kind, ChunkKind::Union);
+        assert_eq!(chunks[1].name.as_deref(), Some("Payload"));
+        assert_eq!(chunks[2].kind, ChunkKind::ExternCrate);
+        assert_eq!(chunks[2].name.as_deref(), Some("serde"));
     }
 
     #[test]

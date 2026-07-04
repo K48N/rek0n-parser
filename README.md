@@ -1,40 +1,30 @@
 # rek0n-parser
 
-Part of my personal project rek0n. Parses source into intact structural blocks for RAG ingestion.
+Part of [rek0n](https://github.com/K48N/rek0n). Turns source files into structural chunks for RAG ingestion.
 
-## What it is
+## Overview
 
-A Rust library that turns source files into `SemanticChunk` values (functions, structs, impl blocks, enums, traits, and the rest) ready for embedding downstream. No vectors, models, or databases here; just parse and return text + metadata.
+This crate parses Rust source with tree-sitter and returns `SemanticChunk` values (`ParsedChunk` from [rek0n-chunk](https://github.com/K48N/rek0n-chunk)): functions, structs, impl blocks, enums, traits, and related items with line ranges and source text. It does not embed, store vectors, or talk to a database.
 
-Most chunking for RAG pipelines is line-based or token-based, and libraries for that already exist. This crate exists because those approaches cut functions and impl blocks in half, which produces embeddings that do not mean much. Tree-sitter takes more setup than a text splitter, but it is the only reliable way to guarantee a chunk boundary lines up with a real structural unit. Rust is the only language wired up today; every other language needs its own extractor built on the same approach.
+Line-based splitters are easy to ship but they cut functions in half. Tree-sitter costs more setup, but chunk boundaries follow real syntax, which makes downstream embeddings much more useful.
 
 ## How it works
 
-1. `parse_file(source, "rust")` runs tree-sitter with a query over top-level item nodes.
-2. Items nested inside `impl`/`trait` bodies stay in the parent chunk. Items inside `mod`/`extern` blocks are extracted on their own.
-3. Leading `#[attributes]` come from AST sibling nodes. `///` / `/**` docs come from a string-aware source scan (tree-sitter stores comments as extras, not tree nodes).
-4. Each chunk carries kind, name, line range, text, and a `has_error` flag when tree-sitter inserted recovery nodes inside that item.
-5. Parse timeouts and cancellation are configurable via `ParseOptions`. Errors elsewhere in the file do not block extraction of valid items.
+1. `parse_file(source, "rust")` runs a tree-sitter query over top-level items.
+2. Items inside inline `mod { ... }` blocks are extracted separately. File-only `mod foo;` declarations stay one chunk.
+3. Leading `#[attributes]` and `inner_attribute_item` siblings are included via AST walks. Doc comments come from a string-aware scan because tree-sitter stores them as extras.
+4. Each chunk carries kind, optional name, text, start/end lines, and `has_error` when recovery nodes appear inside that item.
+5. `ParseOptions` controls timeout, source size, chunk count, and cooperative cancellation.
 
-## Why it's built this way
+## Design
 
-**Tree-sitter over naive splitting.** Line-based or fixed-size chunking cuts functions and impl blocks in half. AST queries keep semantic units intact so embeddings stay meaningful.
+**Tree-sitter over token splitting.** RAG over code needs whole functions and impl blocks, not arbitrary 512-token windows.
 
-**Hard parser boundary.** rek0n's indexer handles embed and store. This crate answers one question only: what are the structural pieces? No hidden side effects.
+**Best effort on broken files.** A syntax error mid-file should not throw away valid chunks above it.
 
-**Best-effort on broken source.** A syntax error mid-file should not discard valid chunks above it. RAG ingestion prefers partial coverage over all-or-nothing.
+**Hard parser boundary.** This crate answers one question: what are the structural pieces? Embedding and storage live elsewhere.
 
-**Hybrid metadata attachment.** Attributes are real AST siblings; doc comments are not in the tree at all. A small lexer indexes doc ranges and skips string/char/lifetime literals so lifetimes like `'a` do not corrupt the scan.
-
-**Thin dependency stack.** tree-sitter, thiserror, optional serde. No tokenizer framework, no language-server stack.
-
-## Shortcomings
-
-- Rust only today; other languages need their own extractor module.
-- Doc comments are lexer-indexed, not tree-walked, since tree-sitter-rust puts them in `extras`.
-- `has_error` covers `ERROR`/`MISSING` nodes inside a chunk, not every subtle recovery artifact.
-- Inline `mod` blocks produce both a `Mod` chunk and separate chunks for items inside it.
-- `union`, `use`, and bare `extern mod` declarations are not captured yet.
+**Thin stack.** tree-sitter, thiserror, optional serde, plus rek0n-chunk for shared types.
 
 ## Usage
 
@@ -46,15 +36,21 @@ for chunk in &chunks {
     if chunk.has_error {
         continue;
     }
-    // embed chunk.text
+    // hand off chunk.text to rek0n-embed
 }
 ```
 
-See `examples/chunk_file.rs` for a full file-to-chunks walkthrough:
+Example:
 
 ```sh
 cargo run --example chunk_file -- path/to/lib.rs
 ```
+
+## Known gaps
+
+- Rust only. Other languages need their own extractor module on the same pattern.
+- Doc comments are lexer-indexed, not tree-walked.
+- `has_error` flags recovery inside a chunk, not every subtle parse artifact.
 
 ## License
 

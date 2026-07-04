@@ -19,16 +19,21 @@ path = "src/lib.rs"
 
 [features]
 default = ["serde"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "rek0n-chunk/serde"]
 
 [dependencies]
 tree-sitter = "0.20"
 tree-sitter-rust = "0.20"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
+rek0n-chunk = { path = "../rek0n-chunk", version = "0.1.0", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "chunk_file"
+path = "examples/chunk_file.rs"
 
 [dev-dependencies]
 serde_json = "1.0"
