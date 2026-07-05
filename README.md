@@ -1,6 +1,6 @@
 # rek0n-parser
 
-Part of [rek0n](https://github.com/K48N/rek0n). Turns source files into structural chunks for RAG ingestion.
+Turns source files into structural chunks for RAG ingestion.
 
 ## Overview
 
