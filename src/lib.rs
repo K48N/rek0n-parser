@@ -34,7 +34,7 @@ impl Default for ParseOptions<'_> {
     }
 }
 
-impl<'a> ParseOptions<'a> {
+impl ParseOptions<'_> {
     pub fn validate(&self) -> Result<(), ParserError> {
         if self.max_source_bytes == 0 {
             return Err(ParserError::InvalidOptions(
