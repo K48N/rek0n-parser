@@ -4,7 +4,7 @@ Part of [rek0n](https://github.com/K48N/rek0n). Turns source files into structur
 
 ## Overview
 
-This crate parses Rust source with tree-sitter and returns [`ParsedChunk`](https://github.com/K48N/rek0n-chunk) values from [rek0n-chunk](https://github.com/K48N/rek0n-chunk): functions, structs, impl blocks, enums, traits, and related items with line ranges and source text. It does not embed, store vectors, or talk to a database.
+This crate parses Rust source with tree-sitter and returns `ParsedChunk` values: functions, structs, impl blocks, enums, traits, and related items with line ranges and source text. It does not embed, store vectors, or talk to a database.
 
 Line-based splitters are easy to ship but they cut functions in half. Tree-sitter costs more setup, but chunk boundaries follow real syntax, which makes downstream embeddings much more useful.
 
@@ -24,7 +24,7 @@ Line-based splitters are easy to ship but they cut functions in half. Tree-sitte
 
 **Hard parser boundary.** This crate answers one question: what are the structural pieces? Embedding and storage live elsewhere.
 
-**Thin stack.** tree-sitter, thiserror, optional serde, plus rek0n-chunk for shared types.
+**Thin stack.** tree-sitter, thiserror, and optional serde.
 
 ## Usage
 

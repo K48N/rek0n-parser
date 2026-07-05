@@ -26,8 +26,7 @@ tree-sitter = "0.20"
 tree-sitter-rust = "0.20"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
-rek0n-chunk = { path = "../rek0n-chunk", version = "0.1.0", default-features = false }
-
+rek0n-chunk = { version = "0.1.0", default-features = false }
 [package.metadata.docs.rs]
 all-features = true
 
