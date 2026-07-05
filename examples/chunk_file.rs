@@ -1,4 +1,4 @@
-use rek0n_parser::{parse_file, SemanticChunk};
+use rek0n_parser::{parse_file, ParsedChunk};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -38,7 +38,7 @@ fn language_for_path(path: &str) -> &str {
     }
 }
 
-fn print_chunks(path: &str, chunks: &[SemanticChunk]) {
+fn print_chunks(path: &str, chunks: &[ParsedChunk]) {
     println!("file: {path}");
     println!("chunks: {}", chunks.len());
 

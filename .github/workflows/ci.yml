@@ -27,10 +27,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Checkout rek0n-chunk
-        uses: actions/checkout@v4
-        with:
-          repository: K48N/rek0n-chunk
-          path: ../rek0n-chunk
+        run: git clone --depth 1 https://github.com/K48N/rek0n-chunk.git ../rek0n-chunk
 
       - name: Install Rust ${{ matrix.rust }}
         uses: dtolnay/rust-toolchain@master

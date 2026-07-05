@@ -1,4 +1,4 @@
-pub use rek0n_chunk::{ChunkKind, ParsedChunk as SemanticChunk};
+pub use rek0n_chunk::{ChunkKind, ParsedChunk};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

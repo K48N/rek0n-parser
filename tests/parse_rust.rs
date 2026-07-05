@@ -1,6 +1,6 @@
-use rek0n_parser::{parse_file, ChunkKind, ParserError, SemanticChunk};
+use rek0n_parser::{parse_file, ChunkKind, ParsedChunk, ParserError};
 
-fn healthy(chunks: &[SemanticChunk]) -> Vec<&SemanticChunk> {
+fn healthy(chunks: &[ParsedChunk]) -> Vec<&ParsedChunk> {
     chunks.iter().filter(|chunk| !chunk.has_error).collect()
 }
 

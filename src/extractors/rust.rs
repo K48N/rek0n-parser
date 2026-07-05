@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 
 use crate::extractors::doc_scan::{leading_doc_start, scan_doc_comments, ByteRange};
-use crate::types::{ChunkKind, ParserError, SemanticChunk};
+use crate::types::{ChunkKind, ParsedChunk, ParserError};
 use crate::ParseOptions;
 
 const RUST_QUERY: &str = r#"
@@ -29,7 +29,7 @@ const RUST_QUERY: &str = r#"
 pub fn extract_rust_chunks(
     source_code: &str,
     options: ParseOptions<'_>,
-) -> Result<Vec<SemanticChunk>, ParserError> {
+) -> Result<Vec<ParsedChunk>, ParserError> {
     let language = tree_sitter_rust::language();
 
     let mut parser = Parser::new();
@@ -81,7 +81,7 @@ pub fn extract_rust_chunks(
             let start_line = byte_offset_to_line(&line_starts, start_byte);
             let end_line = byte_offset_to_line(&line_starts, end_byte.saturating_sub(1));
 
-            chunks.push(SemanticChunk {
+            chunks.push(ParsedChunk {
                 kind,
                 name,
                 text,
@@ -247,7 +247,7 @@ mod tests {
     use crate::types::ChunkKind;
     use crate::ParseOptions;
 
-    fn parse(source: &str) -> Result<Vec<SemanticChunk>, ParserError> {
+    fn parse(source: &str) -> Result<Vec<ParsedChunk>, ParserError> {
         extract_rust_chunks(source, ParseOptions::default())
     }
 

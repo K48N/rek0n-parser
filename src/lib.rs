@@ -6,8 +6,7 @@ mod types;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-pub use types::{ChunkKind, ParserError, SemanticChunk};
-pub use rek0n_chunk::ParsedChunk;
+pub use types::{ChunkKind, ParsedChunk, ParserError};
 
 pub const DEFAULT_PARSE_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_MAX_SOURCE_BYTES: usize = 4 * 1024 * 1024;
@@ -76,7 +75,7 @@ impl<'a> ParseOptions<'a> {
     }
 }
 
-pub fn parse_file(source: &str, language: &str) -> Result<Vec<SemanticChunk>, ParserError> {
+pub fn parse_file(source: &str, language: &str) -> Result<Vec<ParsedChunk>, ParserError> {
     parse_file_with_options(source, language, ParseOptions::default())
 }
 
@@ -84,7 +83,7 @@ pub fn parse_file_with_options(
     source: &str,
     language: &str,
     options: ParseOptions<'_>,
-) -> Result<Vec<SemanticChunk>, ParserError> {
+) -> Result<Vec<ParsedChunk>, ParserError> {
     options.validate()?;
 
     if source.len() > options.max_source_bytes {
@@ -138,7 +137,7 @@ mod tests {
     fn semantic_chunks_round_trip_through_serde_json() {
         let chunks = parse_file("fn main() {}", "rust").expect("parse should succeed");
         let json = serde_json::to_string(&chunks).expect("serialize should succeed");
-        let restored: Vec<SemanticChunk> =
+        let restored: Vec<ParsedChunk> =
             serde_json::from_str(&json).expect("deserialize should succeed");
         assert_eq!(chunks, restored);
     }
